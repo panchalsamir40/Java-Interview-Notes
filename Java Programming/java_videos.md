@@ -1,0 +1,1 @@
+1. Basic Memory and GC:https://www.youtube.com/watch?v=dYsIe6wpOd4
