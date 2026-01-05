@@ -1,5 +1,3 @@
-Below are **clean, structured notes** created from your transcript.
-I’ve rewritten everything for **clarity**, corrected inaccuracies, added **extra explanation**, and made the concepts easy to revise.
 
 ---
 
@@ -273,8 +271,4 @@ Call `remove()` after request completes.
 
 ---
 
-If you want, I can also create:
-✅ A diagram-style visual summary
-✅ Flash-card style revision questions
-✅ Interview-ready explanation format
-Just tell me!
+

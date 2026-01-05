@@ -1,4 +1,3 @@
-Below is the **short, clean theory version** of your transcript, rewritten for easy understanding and revision.
 
 ---
 

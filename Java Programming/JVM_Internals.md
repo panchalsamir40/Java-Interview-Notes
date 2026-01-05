@@ -1,5 +1,3 @@
-Below are **clean, corrected, interview-day JVM Architecture notes**.
-They are **short, precise, fact-checked**, and written to be **read in 5–10 minutes before an interview**.
 
 ---
 
@@ -23,6 +21,7 @@ They are **short, precise, fact-checked**, and written to be **read in 5–10 mi
 2. **Runtime Data Areas (Memory)**
 3. **Execution Engine**
 
+![img.png](images/jvm_arch.png)
 ---
 
 ## 1. Class Loader Subsystem

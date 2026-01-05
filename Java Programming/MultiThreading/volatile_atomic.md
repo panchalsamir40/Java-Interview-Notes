@@ -1,4 +1,3 @@
-Here are **clean, structured notes** from the video, plus **important extra points** that are useful for exams/interviews and not clearly stated in the transcript.
 
 ---
 
