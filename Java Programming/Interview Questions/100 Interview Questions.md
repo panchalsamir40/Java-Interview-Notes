@@ -530,35 +530,280 @@ Key for effective immutability pattern.
 
 #### Exception Handling & JVM Internals (51–65)
 
-51. Difference between checked and unchecked exceptions. Best practices.
+Here are detailed, up-to-date answers (as of January 2026) to the **Exception Handling & JVM Internals** questions (51–65) that are commonly asked in senior Java developer interviews.
 
-52. How does try-with-resources work internally (AutoCloseable)?
+### 51. Difference between checked and unchecked exceptions. Best practices.
 
-53. Explain OutOfMemoryError vs StackOverflowError. Causes and fixes.
+| Aspect                  | Checked Exceptions                              | Unchecked Exceptions                           |
+|-------------------------|-------------------------------------------------|------------------------------------------------|
+| Inheritance             | Extend `Exception` (but not `RuntimeException`) | Extend `RuntimeException` or `Error`           |
+| Compile-time check      | Must be declared in `throws` or caught          | No compile-time obligation                     |
+| Purpose                 | Recoverable conditions (external problems)      | Programming errors or irrecoverable situations |
+| Examples                | `IOException`, `SQLException`, `ParseException` | `NullPointerException`, `IllegalArgumentException`, `OutOfMemoryError` |
+| When thrown             | Usually by I/O, network, DB operations          | Usually by application logic bugs              |
 
-54. What are the different memory areas in JVM (Heap, Stack, Metaspace)?
+**Best practices (2025–2026)**:
+- Use **checked** only for truly recoverable situations where the caller is expected to handle it (e.g., file not found → ask user for new path).
+- Prefer **unchecked** (custom `RuntimeException` subclasses) for almost everything else → cleaner code, less try-catch clutter.
+- Wrap checked exceptions in unchecked ones when deep in call stack (e.g., `new RuntimeException("Failed to read config", ex)`).
+- Avoid `throws Exception` or `throws Throwable` — be specific.
+- Use `record` + pattern matching for rich custom exceptions (Java 21+).
 
-55. Difference between young and old generation GC.
+### 52. How does try-with-resources work internally (AutoCloseable)?
 
-56. Explain G1 vs ZGC vs Shenandoah garbage collectors.
+`try-with-resources` (introduced in Java 7) automatically closes resources that implement `AutoCloseable` (or its subtype `Closeable`).
 
-57. How does Generational ZGC (Java 21) improve performance?
+**Internal transformation** (compiler desugaring):
+```java
+try (Resource r = new Resource()) {
+    // use r
+}
+```
 
-58. What is escape analysis? Impact on allocation.
+becomes roughly:
+```java
+Resource r = new Resource();
+Throwable suppressed = null;
+try {
+    // use r
+} catch (Throwable t) {
+    suppressed = t;
+    throw t;
+} finally {
+    if (r != null) {
+        try {
+            r.close();
+        } catch (Throwable t) {
+            if (suppressed != null) {
+                suppressed.addSuppressed(t);
+            } else {
+                throw t;
+            }
+        }
+    }
+}
+```
 
-59. Explain class loading mechanism. Parent delegation model.
+**Key points**:
+- Multiple resources → closes in **reverse order** of declaration.
+- `close()` exceptions are **suppressed** (added via `addSuppressed()`) — primary exception remains primary.
+- Works with any `AutoCloseable` (not just I/O).
+- Java 9+ allows effectively final variables: `try (existingResource) { ... }`
 
-60. What are JVM flags for tuning GC (-XX:+UseG1GC, etc.)?
+### 53. Explain OutOfMemoryError vs StackOverflowError. Causes and fixes.
 
-61. How to analyze heap dumps (jmap, Eclipse MAT)?
+| Error Type              | OutOfMemoryError                                   | StackOverflowError                               |
+|-------------------------|----------------------------------------------------|--------------------------------------------------|
+| Thrown when             | JVM cannot allocate more memory (usually heap)     | Thread stack space exhausted                     |
+| Main causes             | - Too many objects<br>- Memory leaks<br>- Large single allocation<br>- Metaspace exhaustion | - Deep/infinite recursion<br>- Very large stack frames |
+| Subtypes                | Java heap space, GC overhead limit, Metaspace, Native memory, etc. | No subtypes                                      |
+| Typical fixes           | - Increase -Xmx<br>- Fix leaks (heap dump analysis)<br>- Use off-heap / direct buffers<br>- Optimize data structures | - Increase -Xss (per thread stack size)<br>- Refactor recursion → iteration / stack-based<br>- Reduce local variables / object size |
 
-62. Difference between minor, major, and full GC.
+**Note**: Both are `Error` (unchecked) — catching them is rarely useful except for recovery logging.
 
-63. What is metaspace? Difference from PermGen.
+### 54. What are the different memory areas in JVM (Heap, Stack, Metaspace)?
 
-64. Explain JIT compilation phases (C1, C2 compilers).
+Modern HotSpot JVM (Java 21–25) memory areas:
 
-65. How does biased locking work? Revocation issues.
+| Area            | Managed by     | Contents                                      | Shared / Per-thread | GC'ed?     | Size control flags                  |
+|-----------------|----------------|-----------------------------------------------|----------------------|------------|-------------------------------------|
+| Heap            | JVM            | All objects and arrays                        | Shared               | Yes        | -Xms, -Xmx                          |
+| Metaspace       | Native         | Class metadata, interned strings, annotations | Shared               | Yes (full GC) | -XX:MetaspaceSize, MaxMetaspaceSize |
+| Thread Stacks   | Native         | Method call frames, local variables, params   | Per-thread           | No         | -Xss (per thread)                   |
+| Code Cache      | Native         | JIT-compiled code                             | Shared               | Yes (sweep) | -XX:ReservedCodeCacheSize           |
+| Compressed Oops | -              | Pointers in heap (compressed in 64-bit)       | -                    | -          | -XX:+UseCompressedOops              |
+| Direct Memory   | Application    | Off-heap (ByteBuffer.allocateDirect)          | Shared               | Manual     | -XX:MaxDirectMemorySize             |
+
+**Important**: Since Java 8, PermGen → Metaspace (native memory, auto-sizing).
+
+### 55. Difference between young and old generation GC
+
+Based on **generational hypothesis** — most objects die young.
+
+| Aspect                 | Young Generation (Minor GC)                  | Old Generation (Major GC)                     |
+|------------------------|----------------------------------------------|-----------------------------------------------|
+| Contains               | Eden + 2 Survivor spaces                     | Tenured / Old space                           |
+| Object lifetime        | Short-lived                                  | Long-lived (survived multiple minor GCs)      |
+| Collection frequency   | Very frequent                                | Much less frequent                            |
+| Collection type        | Copying collector (fast)                     | Mark-Sweep-Compact or concurrent variants     |
+| Pause time             | Usually very short                           | Longer (especially in G1/ZGC reduced)         |
+| Promotion              | Survivors → tenured after threshold          | -                                             |
+
+**Promotion**: After surviving several minor GCs (controlled by `-XX:MaxTenuringThreshold`, default 15), objects move to old generation.
+
+### 56. Explain G1 vs ZGC vs Shenandoah garbage collectors
+
+All are low-pause, concurrent collectors (Java 21–25 era):
+
+| Collector       | Default since | Pause target       | Throughput impact | Best for                          | Key technique                          |
+|-----------------|---------------|--------------------|-------------------|-----------------------------------|----------------------------------------|
+| **G1**          | Java 9        | ~200 ms (tunable)  | Good              | General purpose, < ~32GB heaps    | Region-based, mixed young+old collections |
+| **ZGC**         | Production-ready Java 15 | <1 ms (even TB heaps) | ~10–20% lower than G1 | Latency-sensitive, large heaps    | Colored pointers + load barriers       |
+| **Shenandoah**  | Java 12 (Red Hat) | <10 ms             | Slightly better than ZGC | Latency-sensitive, large heaps    | Forwarding pointers + concurrent evac  |
+
+**2026 recommendation**:
+- **G1** — still the safe default for most applications
+- **ZGC** — when you need sub-millisecond p99.99 latency (cloud, trading, streaming)
+- **Shenandoah** — good alternative if ZGC throughput is too low
+
+### 57. How does Generational ZGC (Java 21) improve performance?
+
+**Generational ZGC** (JEP 439, production-ready in Java 21) added young/old generation separation to the originally non-generational ZGC.
+
+**Major improvements**:
+- Much faster collection of short-lived objects (young generation)
+- Reduced allocation rate pressure on old generation
+- Lower average pause times (often 10–30 µs p99 instead of ~200–500 µs)
+- Better throughput in allocation-heavy workloads (closer to G1)
+- Still keeps max pause <1 ms (even for multi-TB heaps)
+
+**Trade-off**: Slightly higher allocation overhead due to generational barriers, but in practice most workloads show 5–20% better throughput than non-generational ZGC.
+
+**Enable**: `-XX:+UseZGC -XX:+ZGenerational`
+
+### 58. What is escape analysis? Impact on allocation.
+
+**Escape analysis** — JIT compiler optimization that determines whether an object **escapes** the method/thread scope.
+
+**Outcomes**:
+1. **No escape** → object can be **allocated on stack** (or eliminated completely via scalar replacement)
+2. **Partial escape** → some fields can be optimized
+3. **Escapes** → normal heap allocation
+
+**Impact**:
+- Stack allocation → no GC pressure, faster creation/death
+- Scalar replacement → completely removes allocation (fields become locals)
+- Common in temporary objects (builders, iterators, lambdas)
+
+**Flags**: `-XX:+DoEscapeAnalysis` (enabled by default), `-XX:+PrintEscapeAnalysis` (diagnostic)
+
+### 59. Explain class loading mechanism. Parent delegation model.
+
+**Class loading phases**: Loading → Linking (Verification, Preparation, Resolution) → Initialization
+
+**Class loaders hierarchy** (parent delegation):
+1. Bootstrap ClassLoader (null parent) → core JDK classes (`rt.jar`, `java.*`)
+2. Platform ClassLoader → JDK modules
+3. Application ClassLoader → application classpath
+
+**Parent delegation model**:
+- When a class loader gets a request, it first delegates to parent.
+- Only if parent cannot find it → child tries to load.
+- **Purpose**: Prevents duplicate classes, protects core classes from malicious overrides
+
+**Breaks**: Custom loaders (OSGi, plugins), context class loaders (thread.setContextClassLoader())
+
+### 60. What are JVM flags for tuning GC (-XX:+UseG1GC, etc.)?
+
+**Important GC tuning flags (Java 21–25)**:
+
+| Flag                                | Purpose                                                  | Typical values                          |
+|-------------------------------------|----------------------------------------------------------|-----------------------------------------|
+| `-XX:+UseG1GC`                      | Use G1 collector                                         | Default since Java 9                    |
+| `-XX:+UseZGC`                       | Use ZGC                                                  | For low-latency                         |
+| `-XX:+ZGenerational`                | Enable generational ZGC                                  | Recommended                             |
+| `-XX:MaxGCPauseMillis`              | Target pause time (G1)                                   | 200 (default)                           |
+| `-XX:G1HeapRegionSize`              | Region size (G1)                                         | 1M–32M (auto)                           |
+| `-Xms`, `-Xmx`                      | Initial & maximum heap size                              | Equal for production                    |
+| `-XX:NewRatio`                      | Old : Young ratio                                        | 2 (default)                             |
+| `-XX:MaxTenuringThreshold`          | Max age before promotion                                 | 15 (default)                            |
+| `-Xlog:gc*`                         | GC logging                                               | Very useful for tuning                  |
+
+**Rule of thumb**: Set -Xms = -Xmx, tune pause target, then analyze GC logs.
+
+### 61. How to analyze heap dumps (jmap, Eclipse MAT)?
+
+**Generate heap dump**:
+- `-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=...`
+- `jcmd <pid> GC.heap_dump filename=heap.hprof`
+- `jmap -dump:live,format=b,file=heap.hprof <pid>`
+
+**Analysis tools**:
+1. **Eclipse Memory Analyzer (MAT)** — most popular
+   - Leak suspects report
+   - Dominator tree
+   - Histogram
+   - OQL queries
+2. **jhat** — simple browser-based (legacy)
+3. **VisualVM** / **JMC** — integrated heap dump analysis
+4. **heaphero.io** — online analyzer
+
+**Typical steps**:
+1. Find largest objects (histogram)
+2. Find retainers (what keeps them alive)
+3. Check class histograms
+4. Look for accumulation patterns
+
+### 62. Difference between minor, major, and full GC
+
+| Type         | Scope                          | Frequency | Stop-the-world? | Typical duration |
+|--------------|--------------------------------|-----------|------------------|------------------|
+| **Minor GC** | Young generation only          | Very high | Yes              | Very short       |
+| **Major GC** | Old generation (may include young) | Low    | Yes (depends on collector) | Longer           |
+| **Full GC**  | Entire heap + metaspace        | Rare      | Usually yes      | Longest          |
+
+**Modern collectors**:
+- **G1**: Mixed collections (young + some old regions) — no pure major/full
+- **ZGC/Shenandoah**: Mostly concurrent — very few stop-the-world phases
+
+### 63. What is metaspace? Difference from PermGen
+
+**Metaspace** (since Java 8):
+- Stores class metadata, method bytecode, interned strings, annotations
+- Located in **native memory** (not heap)
+- Automatically resizes (grows/shrinks)
+- Garbage collected during full GC (when metaspace is full)
+
+**PermGen** (Java 7 and earlier):
+- Part of heap
+- Fixed size (`-XX:MaxPermSize`)
+- Frequent OutOfMemoryError: PermGen
+- No auto-sizing
+
+**Key difference**: Metaspace → no more fixed-size PermGen issues, but can still cause native OOM if grows uncontrollably.
+
+### 64. Explain JIT compilation phases (C1, C2 compilers)
+
+**Tiered compilation** (default since Java 7):
+
+1. **Interpreter** → first execution
+2. **C1 (Client compiler)** — fast, less optimized (levels 1–3)
+   - Quick compilation
+   - Used for startup/hot code
+3. **C2 (Server compiler)** — slow, highly optimized (level 4)
+   - Aggressive inlining, loop optimizations, escape analysis
+   - Used after method becomes very hot
+
+**Thresholds**:
+- Compilation triggered after ~1500–10000 invocations (varies)
+- Background compilation (non-blocking)
+
+**Flags**:
+- `-XX:+TieredCompilation` (default)
+- `-XX:CompileThreshold=...`
+- `-XX:+PrintCompilation` (diagnostic)
+
+### 65. How does biased locking work? Revocation issues
+
+**Biased locking** — optimization for uncontended locks (enabled by default until Java 15, removed in Java 21+).
+
+**How it works**:
+- First thread that acquires a lock **biases** the object (stores thread ID in mark word)
+- Subsequent acquisitions by same thread → no atomic CAS (very fast)
+- If another thread tries to acquire → **revocation** occurs
+
+**Revocation**:
+- Bulk revocation (all instances of class) or single-object
+- Stop-the-world safepoint (pause all threads)
+- Inflates lock to thin/fat monitor
+
+**Issues**:
+- High revocation rate → performance degradation (especially startup)
+- For this reason, biased locking was **disabled by default** in Java 15+ and **completely removed** in Java 21+
+
+**Modern recommendation**: Rely on lightweight locking (fast-path CAS) and stack-locking (Java 21+ enhancements).
+
+Let me know which section you'd like to cover next!
 
 #### Java 8+ Features & Streams (66–80)
 
