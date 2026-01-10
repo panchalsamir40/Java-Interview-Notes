@@ -1135,39 +1135,274 @@ The **parent delegation model ensures that core Java classes are always loaded b
 
 **Modern recommendation**: Rely on lightweight locking (fast-path CAS) and stack-locking (Java 21+ enhancements).
 
-Let me know which section you'd like to cover next!
 
-#### Java 8+ Features & Streams (66–80)
+### Java 8+ Features & Streams Questions (66–80)
 
-66. Explain lambda expressions and functional interfaces.
+Here are clear, interview-ready explanations covering Java 8 through Java 21+ features (as of January 2026, with Java 21 LTS and Java 25 in active use).
 
-67. What are default and static methods in interfaces (Java 8)?
+#### 66. Explain lambda expressions and functional interfaces.
+**Lambda expressions** (Java 8) are anonymous functions that implement **functional interfaces** (interfaces with exactly one abstract method — SAM).  
+Syntax: `(parameters) -> expression` or `(params) -> { statements; }`  
 
-68. How does Stream API work? Lazy vs eager operations.
+**Functional interfaces** are marked with `@FunctionalInterface` (optional but recommended).  
+Examples: `Runnable`, `Comparator`, `Function<T,R>`, `Predicate<T>`, `Consumer<T>`, `Supplier<T>`.  
 
-69. Difference between map() and flatMap() in Streams.
+**Purpose**: Enable functional programming style — pass behavior as data.  
+Example:  
+```java
+Comparator<String> byLength = (s1, s2) -> s1.length() - s2.length();
+list.sort(byLength);
+```
+Lambdas are converted to instances of the target functional interface at compile time.
 
-70. Explain Collectors: groupingBy, partitioningBy, toMap.
+#### 67. What are default and static methods in interfaces (Java 8)?
+**Default methods** provide default implementation in interfaces (using `default` keyword).  
+**Static methods** are utility methods attached to the interface.  
 
-71. What are optional methods? Best practices to avoid NullPointerException.
+**Purpose**: Allow interface evolution without breaking existing implementations (backward compatibility).  
 
-72. How do parallel streams work? When to avoid them.
+Examples:
+```java
+interface Vehicle {
+    default void start() {                      // Default
+        System.out.println("Engine starting...");
+    }
 
-73. Explain the Spliterator interface.
+    static int calculateFuel(int distance) {    // Static
+        return distance / 10;
+    }
+}
+```
+**Conflicts**: If multiple defaults conflict, implementing class must override.  
+Classic use case: `Collection.stream()` added via default method.
 
-74. Difference between intermediate and terminal operations.
+#### 68. How does Stream API work? Lazy vs eager operations.
+**Stream API** processes collections/data in a functional, declarative way.  
 
-75. What are method references? Types (:: syntax).
+**Pipeline structure**:
+1. **Source**: `collection.stream()` or `Stream.of(...)`
+2. **Intermediate operations** (lazy): Return new Stream, no computation yet → `filter`, `map`, `sorted`, `distinct`, `limit`, etc.
+3. **Terminal operation** (eager): Triggers actual processing → `collect`, `forEach`, `reduce`, `count`, `anyMatch`, `findFirst`, etc.
 
-76. Explain record patterns in deconstruction (Java 19+).
+**Lazy evaluation**: Intermediate ops are only executed when terminal op is called → efficient chaining, short-circuiting (e.g., `findFirst()` stops early).  
+**Internal iteration**: Stream handles iteration (vs external for-loop).  
+**Parallel**: `.parallel()` uses ForkJoinPool.
 
-77. How does pattern matching for switch (Java 21) handle null?
+#### 69. Difference between map() and flatMap() in Streams.
+Both transform elements → return Stream.
 
-78. What are unnamed patterns and variables (Java 21+)?
+| Operation | Input → Output             | Flattens? | Use Case                              |
+|-----------|----------------------------|-----------|---------------------------------------|
+| **map**   | T → R                      | No        | 1-to-1 transformation                 |
+| **flatMap** | T → Stream<R>            | Yes       | 1-to-many + flatten nested structures |
 
-79. Explain the new HTTP Client in Java 11+.
+**Examples**:
+```java
+// map
+List<String> upper = names.stream()
+    .map(String::toUpperCase)           // Stream<String>
+    .toList();
 
-80. Virtual threads impact on reactive programming (e.g., WebFlux).
+// flatMap
+List<List<String>> nested = ...;
+List<String> flat = nested.stream()
+    .flatMap(Collection::stream)        // Flatten to single Stream<String>
+    .toList();
+```
+**Common**: `Optional.flatMap()`, `Stream.flatMap()` for nested Optionals/Streams.
+
+#### 70. Explain Collectors: groupingBy, partitioningBy, toMap.
+**Collectors** accumulate stream elements into collections/results.
+
+- **groupingBy(Function classifier)** → Map<K, List<T>>  
+  ```java
+  Map<String, List<Person>> byCity = people.stream()
+      .collect(Collectors.groupingBy(Person::getCity));
+  ```
+
+- **partitioningBy(Predicate)** → Map<Boolean, List<T>> (binary split)  
+  ```java
+  Map<Boolean, List<Person>> adults = people.stream()
+      .collect(Collectors.partitioningBy(p -> p.getAge() >= 18));
+  ```
+
+- **toMap(keyMapper, valueMapper)** → Map<K,V>  
+  ```java
+  Map<Long, String> idToName = people.stream()
+      .collect(Collectors.toMap(Person::getId, Person::getName,
+                                (old, newVal) -> old)); // merge function
+  ```
+
+**Advanced**: `groupingBy(classifier, downstream)` (e.g., `counting()`, `summingInt()`).
+
+#### 71. What are optional methods? Best practices to avoid NullPointerException.
+**Optional<T>** (Java 8) represents a value that may be absent — wrapper around nullable reference.
+
+**Key methods**:
+- `of(T)` / `ofNullable(T)` / `empty()`
+- `isPresent()` / `isEmpty()`
+- `get()` (dangerous)
+- `orElse(T)`, `orElseGet(Supplier)`, `orElseThrow()`
+- `map(Function)`, `flatMap()`, `filter()`
+- `ifPresent(Consumer)`
+
+**Best practices**:
+- Return `Optional` from methods that may return null
+- **Never** use `get()` directly → prefer `orElse*` or `orElseThrow()`
+- Chain transformations: `opt.map(...).orElse(default)`
+- Avoid `Optional` fields/parameters → use for return values only
+- **Do not** replace every null check — use when absence is meaningful
+
+#### 72. How do parallel streams work? When to avoid them.
+**parallelStream()** or `.parallel()` splits data via **Spliterator**, processes on **ForkJoinPool.commonPool()** (≈ CPU cores - 1 threads).
+
+**How it works**:
+- Source split into chunks
+- Work-stealing: idle threads steal tasks
+- Terminal operation combines results
+
+**When to avoid**:
+- Small datasets (overhead > benefit)
+- Stateful operations / side effects
+- Blocking I/O inside lambda (starves common pool)
+- Ordered streams with heavy ops (`.sorted()`, `.distinct()`)
+- Need predictable order
+
+**Rule**: Use parallel for **pure, CPU-bound** operations on large data. Prefer sequential for I/O-bound.
+
+#### 73. Explain the Spliterator interface.
+**Spliterator** (Java 8) = **Splitable Iterator** — enables efficient parallel processing.
+
+**Key methods**:
+- `tryAdvance(Consumer)` — process one element
+- `trySplit()` — split for parallelism (returns child Spliterator)
+- `estimateSize()` — size hint
+- `characteristics()` — flags (ORDERED, SIZED, IMMUTABLE, DISTINCT, CONCURRENT, NONNULL, SUBSIZED)
+
+**Used by**: Streams for decomposition (arrays fast, HashMap harder).  
+Custom Spliterators allow parallel processing of non-standard sources.
+
+#### 74. Difference between intermediate and terminal operations.
+| Type          | Return type | Execution     | Chaining? | Examples                          |
+|---------------|-------------|---------------|-----------|-----------------------------------|
+| **Intermediate** | Stream     | Lazy          | Yes       | map, filter, sorted, limit, skip |
+| **Terminal**     | Non-Stream | Eager         | No        | collect, forEach, reduce, count, anyMatch |
+
+**Intermediate** build pipeline (no work done).  
+**Terminal** triggers computation. Only **one** terminal per pipeline.
+
+#### 75. What are method references? Types (:: syntax).
+**Method references** — shorthand for lambdas that call existing methods.  
+Syntax: `Class::method` or `instance::method`
+
+**Types**:
+1. **Static** — `Class::staticMethod`
+2. **Instance (particular object)** — `obj::instanceMethod`
+3. **Instance (arbitrary object)** — `Class::instanceMethod`
+4. **Constructor** — `Class::new`
+
+**Examples**:
+```java
+list.forEach(System.out::println);                // instance
+Comparator.comparing(Person::getAge);             // instance arbitrary
+Supplier<List<String>> list = ArrayList::new;     // constructor
+```
+
+Cleaner than equivalent lambda when no extra logic.
+
+#### 76. Explain record patterns in deconstruction (Java 19+).
+**Record patterns** (final in Java 21) allow deconstruction of records in `instanceof` and `switch`.
+
+**Example**:
+```java
+record Point(int x, int y) {}
+
+if (obj instanceof Point(int x, int y)) {
+    System.out.println(x + y);  // x, y bound
+}
+```
+
+**Nested**:
+```java
+if (obj instanceof Pair(Point p1, Point p2)) { ... }
+```
+
+**Benefits**: Concise, type-safe destructuring. Only works with records (canonical constructor).
+
+#### 77. How does pattern matching for switch (Java 21) handle null?
+**Pattern matching for switch** (final in Java 21) supports type patterns, guards (`when`), and **explicit null handling**.
+
+**Null behavior**:
+- `case null -> ...` explicitly handles null
+- Without `case null`: `NullPointerException` thrown (backward compatible)
+
+**Example**:
+```java
+String result = switch (obj) {
+    case null        -> "Input is null";
+    case String s    -> "String: " + s.length();
+    case Integer i   -> "Integer: " + i;
+    default          -> "Other";
+};
+```
+
+**Encourages** exhaustive handling — no more separate null checks outside switch.
+
+#### 78. What are unnamed patterns and variables (Java 21+)?
+**Unnamed patterns & variables** (final in Java 22 via JEP 456) use `_` (underscore) for intentionally unused variables/patterns.
+
+**Examples**:
+```java
+// Unnamed variable
+try { ... } catch (Exception _) { log.error("Error occurred"); }
+
+// Unnamed pattern
+if (obj instanceof Point(_, int y)) {
+    System.out.println("Y = " + y);  // x ignored
+}
+
+switch (pair) {
+    case Pair(String _, Integer i) -> System.out.println("Second: " + i);
+}
+```
+
+**Benefits**: Cleaner code, no unused variable warnings, clearer intent.
+
+#### 79. Explain the new HTTP Client in Java 11+.
+**java.net.http.HttpClient** (standardized in Java 11) — modern, non-blocking, HTTP/1.1 + HTTP/2 client.
+
+**Key features**:
+- Synchronous: `send(request, handler)`
+- Asynchronous: `sendAsync(request, handler)` → `CompletableFuture<HttpResponse>`
+- Builder pattern: `HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build()`
+- Supports WebSocket, timeouts, redirects, authentication
+- Body handlers: `BodyHandlers.ofString()`, `ofFile()`, `ofByteArray()`
+
+**Example**:
+```java
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.example.com"))
+    .GET()
+    .build();
+
+HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+```
+
+Replaces old `HttpURLConnection` — cleaner, async-native, HTTP/2 support.
+
+#### 80. Virtual threads impact on reactive programming (e.g., WebFlux).
+**Virtual threads** (final in Java 21) — lightweight, millions possible, unmount on blocking I/O → make **blocking code scale** like non-blocking.
+
+**Impact on reactive (Spring WebFlux / Reactor)**:
+- **Traditional reason for reactive**: Avoid thread-per-request model (platform threads expensive → few threads, non-blocking needed)
+- **With virtual threads**: Thread-per-request becomes viable again — blocking JDBC, RestTemplate, etc. scale to thousands of concurrent requests with low overhead
+- **Many benchmarks** (2024–2026) show virtual threads (Spring MVC) often **match or beat** WebFlux in throughput/latency for typical REST APIs, especially with blocking dependencies
+- **WebFlux still better** when: true non-blocking drivers end-to-end, complex streaming/backpressure, WebSocket, or extreme throughput with minimal memory
+
+**Trend** (2026): Many teams migrate **from WebFlux to Spring MVC + virtual threads** for simplicity/debuggability — reactive complexity often not justified anymore.
+
+These answers are interview-focused: concise, with examples, and highlighting trade-offs. Good luck with your preparation!
 
 #### Design Patterns, Best Practices & Miscellaneous (81–100)
 
