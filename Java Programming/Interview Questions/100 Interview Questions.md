@@ -675,6 +675,149 @@ All are low-pause, concurrent collectors (Java 21–25 era):
 - Scalar replacement → completely removes allocation (fields become locals)
 - Common in temporary objects (builders, iterators, lambdas)
 
+**Escape analysis** is a compiler optimization used by the **Java HotSpot JVM** to determine **whether an object “escapes” the scope in which it is created** (usually a method or a thread).
+
+In simple terms, it answers this question:
+
+> *Can this object be accessed outside the current method or thread?*
+
+---
+
+## What does “escape” mean?
+
+An object **escapes** if a reference to it can be used **outside** its original scope.
+
+### Levels of escape
+
+1. **No escape** – Object is used only inside the method.
+2. **Method escape** – Object is returned or passed to another method.
+3. **Thread escape** – Object is shared across threads (e.g., stored in a static field).
+
+---
+
+## Example
+
+```java
+public void foo() {
+    Point p = new Point(1, 2);  // Does not escape
+    System.out.println(p.x);
+}
+```
+
+Here, `Point` **does not escape** the method `foo()`.
+
+```java
+public Point bar() {
+    return new Point(1, 2);  // Escapes the method
+}
+```
+
+Here, the object **escapes** because it’s returned.
+
+---
+
+## Impact on Allocation (Why Escape Analysis Matters)
+
+Escape analysis allows the JVM to **optimize memory allocation and synchronization**.
+
+### 1. Stack Allocation (instead of Heap)
+
+* Normally, **all objects are allocated on the heap**
+* If the JVM proves an object **does not escape**, it may allocate it **on the stack**
+* Stack allocation is:
+
+  * Faster
+  * Automatically freed when the method exits
+  * No GC overhead
+
+✔ **Result:** Better performance, less garbage collection
+
+---
+
+### 2. Scalar Replacement (Object Elimination)
+
+The JVM may **remove the object entirely** and replace it with individual fields.
+
+```java
+void foo() {
+    Point p = new Point(1, 2);
+    int sum = p.x + p.y;
+}
+```
+
+After escape analysis, this can become (conceptually):
+
+```java
+int x = 1;
+int y = 2;
+int sum = x + y;
+```
+
+✔ **Result:**
+
+* No object allocation at all
+* No memory usage for the object
+
+---
+
+### 3. Lock Elimination
+
+If an object does not escape a thread, synchronization is unnecessary.
+
+```java
+void foo() {
+    synchronized (new Object()) {
+        // work
+    }
+}
+```
+
+The JVM can remove the `synchronized` block entirely.
+
+✔ **Result:**
+
+* Faster execution
+* No locking overhead
+
+---
+
+## When Escape Analysis Is Applied
+
+* Performed by the **JIT (Just-In-Time) compiler**
+* Happens **at runtime**, not compile time
+* Enabled by default in modern JVMs
+
+### JVM flags (for learning/debugging)
+
+```bash
+-XX:+DoEscapeAnalysis
+-XX:+PrintEscapeAnalysis
+```
+
+---
+
+## Summary Table
+
+| Aspect             | Without Escape Analysis | With Escape Analysis |
+| ------------------ | ----------------------- | -------------------- |
+| Object allocation  | Heap only               | Stack / eliminated   |
+| Garbage Collection | More GC pressure        | Less GC              |
+| Synchronization    | Always enforced         | Locks may be removed |
+| Performance        | Slower                  | Faster               |
+
+---
+
+## Key Takeaway
+
+**Escape analysis helps the JVM avoid unnecessary heap allocations and synchronization**, leading to:
+
+* Faster execution
+* Lower memory usage
+* Reduced garbage collection overhead
+
+
+
+
 **Flags**: `-XX:+DoEscapeAnalysis` (enabled by default), `-XX:+PrintEscapeAnalysis` (diagnostic)
 
 ### 59. Explain class loading mechanism. Parent delegation model.
@@ -692,6 +835,195 @@ All are low-pause, concurrent collectors (Java 21–25 era):
 - **Purpose**: Prevents duplicate classes, protects core classes from malicious overrides
 
 **Breaks**: Custom loaders (OSGi, plugins), context class loaders (thread.setContextClassLoader())
+
+## Java Class Loading Mechanism
+
+The **class loading mechanism** in Java is the process by which the **JVM loads, links, and initializes classes** at runtime.
+Classes are loaded **on demand**, not all at once when the program starts.
+
+---
+
+## Phases of Class Loading
+
+![Image](https://media.geeksforgeeks.org/wp-content/uploads/jvmclassloader.jpg)
+
+![Image](https://javatechonline.com/wp-content/uploads/2021/05/JVM_Architecture-1.jpg)
+
+![Image](https://codepumpkin.com/wp-content/uploads/2017/07/jvm_architecture2.png)
+
+### 1. **Loading**
+
+* The JVM reads the `.class` bytecode and creates a `Class` object in memory.
+* Bytecode may come from:
+
+  * File system
+  * JAR files
+  * Network
+* Done by a **ClassLoader**
+
+---
+
+### 2. **Linking**
+
+Linking has **three sub-steps**:
+
+#### a) Verification
+
+* Ensures bytecode is valid and safe
+* Checks:
+
+  * Class format
+  * Stack usage
+  * Type safety
+* Prevents malicious bytecode
+
+#### b) Preparation
+
+* Allocates memory for **static variables**
+* Assigns **default values**
+
+```java
+static int x;   // x = 0
+static Object o; // o = null
+```
+
+#### c) Resolution
+
+* Converts symbolic references into direct memory references
+* Example: resolving method and field references
+
+---
+
+### 3. **Initialization**
+
+* Executes **static initializers** and **static blocks**
+* Assigns actual values
+
+```java
+static int x = 10;
+
+static {
+    System.out.println("Class initialized");
+}
+```
+
+⚠️ Happens **only once per class**
+
+---
+
+## Types of Class Loaders
+
+![Image](https://docs.oracle.com/cd/E19501-01/819-3659/images/dgdeploy2.gif)
+
+![Image](https://media.geeksforgeeks.org/wp-content/uploads/jvmclassloader.jpg)
+
+Java uses a **hierarchical class loader system**:
+
+1. **Bootstrap ClassLoader**
+
+   * Loads core Java classes (`java.lang.*`)
+   * Written in native code
+   * Loads from `rt.jar` (Java 8) or modules (Java 9+)
+
+2. **Extension ClassLoader**
+
+   * Loads classes from `jre/lib/ext`
+   * Optional libraries
+
+3. **Application (System) ClassLoader**
+
+   * Loads classes from classpath (`-classpath`)
+
+---
+
+## Parent Delegation Model
+
+### What is Parent Delegation?
+
+> Before loading a class, a class loader **delegates the request to its parent**.
+
+Only if the parent **cannot find the class**, the child loader attempts to load it.
+
+---
+
+### How Parent Delegation Works
+
+![Image](https://miro.medium.com/1%2AVdQrbVT2XxRAwa9p7twKdg.png)
+
+![Image](https://codepumpkin.com/wp-content/uploads/2017/08/classLoaderDelegationAlgo.png)
+
+**Flow:**
+
+1. Application ClassLoader receives request
+2. Delegates to Extension ClassLoader
+3. Delegates to Bootstrap ClassLoader
+4. If not found → control returns downward
+5. Child loader loads the class
+
+---
+
+### Example
+
+```java
+Class.forName("java.lang.String");
+```
+
+* Application ClassLoader asks parent
+* Bootstrap ClassLoader loads `String`
+* Prevents redefinition of core classes
+
+---
+
+## Why Parent Delegation Is Important
+
+### 1. **Security**
+
+* Prevents overriding core Java classes
+* Example: malicious `java.lang.String`
+
+### 2. **Consistency**
+
+* Core classes are loaded only once
+* Avoids multiple versions of the same class
+
+### 3. **Stability**
+
+* Ensures trusted Java APIs are always used
+
+---
+
+## Breaking Parent Delegation (Advanced)
+
+Some frameworks **intentionally break** parent delegation:
+
+* Application servers
+* OSGi
+* Custom ClassLoaders
+
+Example:
+
+* Web servers loading different versions of libraries
+
+⚠️ Requires careful handling to avoid `ClassCastException`
+
+---
+
+## Summary
+
+| Aspect                | Description                         |
+| --------------------- | ----------------------------------- |
+| Class Loading         | Load → Link → Initialize            |
+| Loading Time          | On demand                           |
+| ClassLoader Hierarchy | Bootstrap → Extension → Application |
+| Parent Delegation     | Parent loads first                  |
+| Benefits              | Security, consistency, stability    |
+
+---
+
+### Key Takeaway
+
+The **parent delegation model ensures that core Java classes are always loaded by trusted class loaders**, making Java secure and robust.
+
 
 ### 60. What are JVM flags for tuning GC (-XX:+UseG1GC, etc.)?
 
