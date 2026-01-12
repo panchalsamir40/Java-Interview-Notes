@@ -1196,20 +1196,186 @@ Both transform elements → return Stream.
 | **map**   | T → R                      | No        | 1-to-1 transformation                 |
 | **flatMap** | T → Stream<R>            | Yes       | 1-to-many + flatten nested structures |
 
-**Examples**:
-```java
-// map
-List<String> upper = names.stream()
-    .map(String::toUpperCase)           // Stream<String>
-    .toList();
+## Difference between `map()` and `flatMap()` in Java Streams
 
-// flatMap
-List<List<String>> nested = ...;
-List<String> flat = nested.stream()
-    .flatMap(Collection::stream)        // Flatten to single Stream<String>
-    .toList();
+Both `map()` and `flatMap()` are **intermediate operations** in the Java Stream API, but they serve **different purposes**.
+
+---
+
+## 1. `map()` — One-to-One Transformation
+
+![Image](https://miro.medium.com/v2/resize%3Afit%3A1400/1%2AHO2Pjql2s4Yg3BuKmGEp1Q.png)
+
+![Image](https://i.sstatic.net/7e1tY.jpg)
+
+### What it does
+
+* Transforms **each element** of a stream into **exactly one element**
+* Output stream size = input stream size
+
+### Signature
+
+```java
+<R> Stream<R> map(Function<? super T, ? extends R> mapper)
 ```
-**Common**: `Optional.flatMap()`, `Stream.flatMap()` for nested Optionals/Streams.
+
+### Example
+
+```java
+List<String> names = List.of("alice", "bob");
+
+List<Integer> lengths =
+    names.stream()
+         .map(String::length)
+         .toList();
+```
+
+**Result**
+
+```
+[5, 3]
+```
+
+✔ One input → one output
+
+---
+
+## 2. `flatMap()` — One-to-Many (Flattening)
+
+![Image](https://custom-images.strikinglycdn.com/res/hrscywv4p/image/upload/c_limit%2Cfl_lossy%2Ch_9000%2Cw_1200%2Cf_auto%2Cq_auto/784839/535425_651851.png)
+
+![Image](https://wkrzywiec.is-a.dev/posts/049_java-series-flatmap/map-fx_hu_88dac164dab23cce.png)
+
+### What it does
+
+* Transforms **each element** into a **Stream**
+* Flattens all resulting streams into **one single stream**
+* Output size can be **smaller, equal, or larger**
+
+### Signature
+
+```java
+<R> Stream<R> flatMap(Function<? super T, ? extends Stream<? extends R>> mapper)
+```
+
+### Example (Nested Collections)
+
+```java
+List<List<String>> list = List.of(
+    List.of("a", "b"),
+    List.of("c", "d")
+);
+
+List<String> result =
+    list.stream()
+        .flatMap(List::stream)
+        .toList();
+```
+
+**Result**
+
+```
+[a, b, c, d]
+```
+
+✔ Nested → flattened
+
+---
+
+## Key Difference (Conceptual)
+
+| Operation   | Input | Output                         |
+| ----------- | ----- | ------------------------------ |
+| `map()`     | `T`   | `R`                            |
+| `flatMap()` | `T`   | `Stream<R>` → flattened to `R` |
+
+---
+
+## Side-by-Side Example
+
+```java
+List<String> sentences = List.of("hello world", "java streams");
+
+// map()
+List<String[]> mapResult =
+    sentences.stream()
+             .map(s -> s.split(" "))
+             .toList();
+
+// flatMap()
+List<String> flatMapResult =
+    sentences.stream()
+             .flatMap(s -> Arrays.stream(s.split(" ")))
+             .toList();
+```
+
+### Results
+
+```
+map():      [["hello","world"], ["java","streams"]]
+flatMap():  ["hello","world","java","streams"]
+```
+
+---
+
+## When to Use Which?
+
+### Use `map()` when:
+
+* You want a **simple transformation**
+* One input → one output
+* No nesting involved
+
+Examples:
+
+* `String → Integer`
+* `Object → DTO`
+
+---
+
+### Use `flatMap()` when:
+
+* Your transformation returns a **collection or stream**
+* You want to **flatten nested structures**
+* One input → zero, one, or many outputs
+
+Examples:
+
+* `List<List<T>> → List<T>`
+* Optional handling
+
+```java
+Optional<String> opt = Optional.of("java");
+
+opt.stream()
+   .flatMap(s -> Stream.of(s.split("")))
+   .forEach(System.out::println);
+```
+
+---
+
+## Common Interview One-Liner
+
+> **`map()` transforms elements; `flatMap()` transforms and flattens.**
+
+---
+
+## Summary Table
+
+| Feature        | `map()`          | `flatMap()`                   |
+| -------------- | ---------------- | ----------------------------- |
+| Mapping        | 1 → 1            | 1 → many                      |
+| Returns        | Stream of values | Stream of streams (flattened) |
+| Stream nesting | Preserved        | Removed                       |
+| Typical use    | Simple mapping   | Flattening                    |
+
+---
+
+### Key Takeaway
+
+If your mapping function returns a **single value**, use `map()`.
+If it returns a **collection or stream**, use `flatMap()`.
+
 
 #### 70. Explain Collectors: groupingBy, partitioningBy, toMap.
 **Collectors** accumulate stream elements into collections/results.
@@ -1405,43 +1571,301 @@ Replaces old `HttpURLConnection` — cleaner, async-native, HTTP/2 support.
 These answers are interview-focused: concise, with examples, and highlighting trade-offs. Good luck with your preparation!
 
 #### Design Patterns, Best Practices & Miscellaneous (81–100)
+Here are detailed, interview-ready answers for questions **81–100** (Design Patterns, Best Practices & Miscellaneous) — perfect for senior Java developer interviews in 2026.
 
-81. Explain Singleton pattern variants (eager, lazy, enum).
+### 81. Explain Singleton pattern variants (eager, lazy, enum)
 
-82. Factory vs Abstract Factory vs Builder pattern.
+**Singleton** ensures exactly one instance and provides global access point.
 
-83. When to use Observer pattern? Java implementation (PropertyChangeSupport).
+**Variants**:
 
-84. Explain Decorator pattern. Relation to Java IO classes.
+1. **Eager Initialization** (simple & thread-safe)
+   ```java
+   public class EagerSingleton {
+       private static final EagerSingleton INSTANCE = new EagerSingleton();
+       private EagerSingleton() {} // private constructor
+       public static EagerSingleton getInstance() { return INSTANCE; }
+   }
+   ```
+   - Created at class loading → thread-safe, but initializes even if never used
 
-85. What is Dependency Injection? Benefits in large apps.
+2. **Lazy Initialization + Double-Checked Locking** (most common safe lazy variant)
+   ```java
+   public class LazySingleton {
+       private static volatile LazySingleton instance;
+       private LazySingleton() {}
+       
+       public static LazySingleton getInstance() {
+           if (instance == null) {                   // first check (no lock)
+               synchronized (LazySingleton.class) {
+                   if (instance == null) {           // second check
+                       instance = new LazySingleton();
+                   }
+               }
+           }
+           return instance;
+       }
+   }
+   ```
+   - `volatile` prevents partial object visibility
 
-86. Strategy pattern vs State pattern.
+3. **Enum Singleton** (Joshua Bloch's recommended — cleanest & safest)
+   ```java
+   public enum EnumSingleton {
+       INSTANCE;
+       
+       public void doSomething() {
+           // business logic
+       }
+   }
+   ```
+   - Handles serialization, reflection attacks, threading automatically
+   - Most concise and bulletproof
 
-87. Explain Proxy pattern. Dynamic proxies in Java.
+**Recommendation in 2026**: Use **enum** unless you have very specific reasons not to.
 
-88. How to implement circuit breaker (Resilience4j)?
+### 82. Factory vs Abstract Factory vs Builder pattern
 
-89. Best practices for equals() and hashCode().
+| Pattern              | Purpose                                      | When to use                                      | Key Characteristic                     |
+|----------------------|----------------------------------------------|--------------------------------------------------|----------------------------------------|
+| **Factory Method**   | Delegate object creation to subclasses       | Need different implementations of same interface | One method that returns product        |
+| **Abstract Factory** | Create families of related objects           | Need interchangeable product families            | Multiple factory methods               |
+| **Builder**          | Construct complex objects step-by-step       | Many optional parameters, immutable objects      | Fluent interface, step-by-step build   |
 
-90. Explain immutable objects design (Joshua Bloch guidelines).
+**Examples**:
+- Factory Method: `Document.createDocument("pdf")` → returns different concrete document
+- Abstract Factory: `GUIFactory` → creates Button + Checkbox for Windows/Mac theme
+- Builder: `Pizza.Builder().size(12).cheese(true).pepperoni().build()`
 
-91. What are modules in Java 9+ (JPMS)? Benefits and migration issues.
+**Modern preference**: Builder is extremely common (Lombok `@Builder`, records + builder pattern).
 
-92. How to handle module accessibility (opens, exports).
+### 83. When to use Observer pattern? Java implementation (PropertyChangeSupport)
 
-93. Difference between String, StringBuilder, StringBuffer.
+**Observer** = one-to-many dependency: when subject state changes, all observers are notified automatically.
 
-94. Explain intern() method in String.
+**When to use**:
+- UI updates when model changes (classic MVC)
+- Event systems (button clicks, property changes)
+- Publish-subscribe scenarios where decoupling is important
 
-95. What is the contract for compareTo() in Comparable?
+**Java built-in implementation** — `java.beans.PropertyChangeSupport` (most common):
 
-96. How to debug performance issues (jstack, jvisualvm)?
+```java
+public class Stock {
+    private final PropertyChangeSupport support = new PropertyChangeSupport(this);
+    private double price;
 
-97. Explain microbenchmarking with JMH.
+    public void setPrice(double newPrice) {
+        double old = this.price;
+        this.price = newPrice;
+        support.firePropertyChange("price", old, newPrice);
+    }
 
-98. What are var (local variable type inference) limitations (Java 10+)?
+    public void addPriceListener(PropertyChangeListener listener) {
+        support.addPropertyChangeListener("price", listener);
+    }
+}
+```
 
-99. Explain text blocks (Java 15). Advantages.
+Modern alternatives: Spring `ApplicationEventPublisher`, RxJava, Project Reactor.
 
-100. How has Java evolved for cloud-native (e.g., GraalVM native images)?
+### 84. Explain Decorator pattern. Relation to Java IO classes
+
+**Decorator** adds responsibilities to objects **dynamically** by wrapping them — follows Open-Closed principle.
+
+**Structure**:
+- Component interface
+- Concrete component
+- Decorator implements component + holds wrapped component
+
+**Java IO classic example**:
+```java
+InputStream is = new BufferedInputStream(
+                  new DataInputStream(
+                  new FileInputStream("file.txt")));
+```
+- Each decorator adds behavior (buffering, data conversion) without modifying base class
+- Chainable → very flexible
+
+Other uses: Logging decorators, security wrappers, compression streams.
+
+### 85. What is Dependency Injection? Benefits in large apps
+
+**Dependency Injection** (DI) = providing dependencies to a class from outside (instead of creating inside).
+
+**Types**:
+- Constructor Injection (most recommended)
+- Setter Injection
+- Field Injection (avoid in production)
+
+**Benefits in large apps**:
+- Loose coupling → easy to swap implementations
+- Testability → easy mocking/stubbing
+- Maintainability → configuration centralized
+- Scalability → modular design
+- Promotes SOLID principles (especially Dependency Inversion)
+
+**Frameworks**: Spring (most popular), Guice, CDI, Micronaut, Quarkus.
+
+### 86. Strategy pattern vs State pattern
+
+Both are behavioral patterns that use composition over inheritance.
+
+| Aspect              | Strategy Pattern                          | State Pattern                                |
+|---------------------|-------------------------------------------|----------------------------------------------|
+| Purpose             | Interchangeable algorithms/behaviors      | Object behavior changes with internal state  |
+| Who chooses         | Client/context chooses strategy           | Object itself changes state internally       |
+| State change        | External                                  | Internal (state transitions)                 |
+| Typical use         | Sorting algorithms, payment methods       | TCP connection states, order lifecycle       |
+| Analogy             | Plug different strategies                 | State machine with different behaviors       |
+
+**Key**: Strategy → context delegates to strategy  
+State → context delegates to current state object
+
+### 87. Explain Proxy pattern. Dynamic proxies in Java
+
+**Proxy** provides a surrogate/placeholder for another object to control access.
+
+**Types**:
+- Virtual Proxy (lazy loading)
+- Protection Proxy (security)
+- Remote Proxy (RMI)
+- Smart Proxy (caching, logging)
+
+**Dynamic Proxy in Java** (`java.lang.reflect.Proxy`):
+```java
+InvocationHandler handler = (proxy, method, args) -> {
+    System.out.println("Before method");
+    Object result = method.invoke(realObject, args);
+    System.out.println("After method");
+    return result;
+};
+
+Service service = (Service) Proxy.newProxyInstance(
+    Service.class.getClassLoader(),
+    new Class[]{Service.class},
+    handler);
+```
+
+**Limitations**: Works only with interfaces  
+**Class-based proxies**: CGLIB, ByteBuddy (used by Spring AOP)
+
+### 88. How to implement circuit breaker (Resilience4j)
+
+**Resilience4j CircuitBreaker** — most popular in Spring Boot 3.x
+
+**Annotation style** (recommended):
+```java
+@Service
+public class BackendService {
+    
+    @CircuitBreaker(name = "backendService", fallbackMethod = "fallback")
+    public String callExternal() {
+        return restTemplate.getForObject("http://external/api", String.class);
+    }
+    
+    public String fallback(Throwable t) {
+        return "Fallback response - service unavailable";
+    }
+}
+```
+
+**Configuration** (application.yml):
+```yaml
+resilience4j:
+  circuitbreaker:
+    instances:
+      backendService:
+        slidingWindowSize: 100
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000   # 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+```
+
+**States**: Closed → Open → Half-Open
+
+### 89. Best practices for equals() and hashCode()
+
+**Rules** (from Effective Java):
+- If two objects are equal according to `equals()`, they **must** have the same `hashCode()`
+- If `equals()` is false, `hashCode()` can be same or different
+- `equals()` must be **reflexive**, **symmetric**, **transitive**, **consistent**, and handle `null` correctly
+
+**Best practices**:
+- Always override both together
+- Use same fields in both
+- Prefer `Objects.equals()` and `Objects.hash()`
+- Make fields used in equals/hashCode **final** if possible
+- For performance: cache hashCode (immutable objects)
+- Use Lombok `@EqualsAndHashCode` or IDE generators
+- **Never** use mutable fields in `equals()/hashCode()` if object used in HashMap/Set
+
+### 90. Explain immutable objects design (Joshua Bloch guidelines)
+
+**Immutable object** = state cannot change after construction.
+
+**Bloch's rules**:
+1. Don’t provide any mutators (setters)
+2. Ensure class cannot be extended (make `final` or private constructor)
+3. Make all fields `private final`
+4. Ensure exclusive access to any mutable components
+   - Defensive copy on input
+   - Defensive copy on output
+5. Don’t allow `this` to escape during construction
+
+**Example**: `String`, `BigInteger`, `LocalDateTime`
+
+**Benefits**: Thread-safety, no side effects, safe in collections, caching friendly.
+
+### 91–100 (remaining questions)
+
+Due to length constraints, here are concise versions of the remaining:
+
+91. **Java Platform Module System (JPMS, Java 9+)**  
+    Strong encapsulation, explicit dependencies (`module-info.java`). Benefits: smaller runtimes, better security, reliable configuration. Migration issues: automatic modules, split packages, reflection breaks.
+
+92. **Module accessibility**  
+    `exports` → public API  
+    `opens` → reflection access at runtime  
+    `uses` / `provides` → services  
+    `requires` → dependencies
+
+93. **String vs StringBuilder vs StringBuffer**  
+    String: immutable  
+    StringBuilder: mutable, not thread-safe (fastest)  
+    StringBuffer: mutable, synchronized (thread-safe, slower)
+
+94. **String intern()**  
+    Adds string to pool → returns canonical reference. Useful for deduplication. Memory resident (Java 7+ in heap).
+
+95. **compareTo() contract**  
+    Consistent with equals, transitive, antisymmetric (sign reverse), total order.
+
+96. **Debug performance**  
+    `jstack` → thread dumps (deadlocks)  
+    `jvisualvm` / JMC → CPU, memory, heap, profiling
+
+97. **JMH microbenchmarking**  
+    `@Benchmark`, `@Warmup`, `@Measurement`, `@Fork` — avoids dead-code elimination, warmup, JIT effects.
+
+98. **var limitations (Java 10+)**  
+    Local variables only, requires initializer, no null/poly expressions, no fields/params/returns.
+
+99. **Text blocks (Java 15+)**  
+    ```java
+    String html = """
+                  <html>
+                      <body>Hello</body>
+                  </html>
+                  """;
+    ```
+    Preserves formatting, strips incidental whitespace.
+
+100. **Java cloud-native evolution**  
+     Modules → smaller images  
+     GraalVM native images → AOT, fast startup, tiny footprint  
+     Virtual threads → massive concurrency with simple code  
+     CRaC → instant startup  
+     Spring AOT, Quarkus, Micronaut → native compilation
+
+These answers are designed to be both comprehensive and concise — perfect for explaining during interviews. Good luck with your preparation!
