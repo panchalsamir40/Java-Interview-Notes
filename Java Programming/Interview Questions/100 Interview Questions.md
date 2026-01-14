@@ -123,13 +123,13 @@ Here are detailed, experienced-level answers to the requested questions on Java 
    This balances worst-case performance during hash collisions (e.g., poor hashCode).
 
 17. **Difference between ConcurrentHashMap and Hashtable? Segment locking in older versions.**  
-   | Feature                  | Hashtable                          | ConcurrentHashMap (Java 8+)                  |
-   |--------------------------|------------------------------------|----------------------------------------------|
-   | Synchronization          | All methods synchronized (coarse-grained lock) | Fine-grained locking (per bucket + CAS)     |
-   | Nulls                    | No null keys/values                | Allows null values (not keys) in some ops    |
-   | Performance              | Poor under high concurrency (single lock) | High scalability (multiple threads)         |
-   | Iterator                 | Fail-fast                          | Fail-safe (weakly consistent)                |
-   | Legacy                   | Old (Java 1.0)                     | Modern (Java 5+, improved in 7/8)            |
+   | Feature                  | Hashtable                                      | ConcurrentHashMap (Java 8+)                  |
+   |--------------------------|------------------------------------------------|----------------------------------------------|
+   | Synchronization          | All methods synchronized (coarse-grained lock) | Fine-grained locking (per bucket + CAS)      |
+   | Nulls                    | No null keys/values                            | Allows null values (not keys) in some ops    |
+   | Performance              | Poor under high concurrency (single lock)      | High scalability (multiple threads)          |
+   | Iterator                 | Fail-fast                                      | Fail-safe (weakly consistent)                |
+   | Legacy                   | Old (Java 1.0)                                 | Modern (Java 5+, improved in 7/8)            |
 
    Older ConcurrentHashMap (Java 7) used **segment locking** (16 segments by default, each with its own lock) for better concurrency. Java 8+ replaced it with finer-grained locking on individual buckets using CAS (compare-and-swap) and synchronized only when needed, plus treeification support.
 
