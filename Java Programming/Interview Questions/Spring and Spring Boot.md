@@ -16,6 +16,102 @@ Here are some of the most commonly asked Spring (Core/Framework) and Spring Boot
 3. **What is the difference between BeanFactory and ApplicationContext?**  
    BeanFactory is the basic IoC container that provides lazy loading and basic DI. ApplicationContext extends BeanFactory, adding advanced features like event propagation, internationalization (i18n), AOP integration, and eager bean loading by default. ApplicationContext is more commonly used.
 
+Here’s a **clear, interview-oriented explanation** of the difference between **`BeanFactory`** and **`ApplicationContext`** in **Spring**, with examples and a quick summary.
+
+---
+
+## 1️⃣ What is `BeanFactory`?
+
+`BeanFactory` is the **core Spring IoC (Inversion of Control) container**.
+
+* Provides **basic dependency injection**
+* Uses **lazy initialization** by default
+* Very lightweight
+* Mostly a **low-level API**
+
+```java
+BeanFactory factory =
+    new ClassPathXmlApplicationContext("beans.xml"); // actually ApplicationContext
+MyBean bean = factory.getBean(MyBean.class);
+```
+
+> In practice, `BeanFactory` is rarely used directly in modern Spring apps.
+
+---
+
+## 2️⃣ What is `ApplicationContext`?
+
+`ApplicationContext` is a **full-featured container** built **on top of `BeanFactory`**.
+
+It adds **enterprise-level features** and is what you use in almost all Spring applications.
+
+```java
+ApplicationContext context =
+    new AnnotationConfigApplicationContext(AppConfig.class);
+MyBean bean = context.getBean(MyBean.class);
+```
+
+---
+
+
+## 4️⃣ Initialization behavior (important!)
+
+### `BeanFactory` – Lazy
+
+```java
+BeanFactory factory = new XmlBeanFactory(resource);
+// Bean created only when getBean() is called
+```
+
+✔️ Lower startup cost
+❌ Errors discovered late
+
+---
+
+### `ApplicationContext` – Eager
+
+```java
+ApplicationContext ctx =
+    new ClassPathXmlApplicationContext("beans.xml");
+// Beans created at startup
+```
+
+✔️ Fail-fast (detects misconfigurations early)
+✔️ Better for production systems
+
+---
+
+## 5️⃣ Why `ApplicationContext` is preferred
+
+* Supports **annotations**
+* Integrates **Spring AOP**
+* Publishes and listens to **events**
+* Handles **messages, resources, profiles**
+* Manages lifecycle automatically
+
+➡️ **`ApplicationContext` = BeanFactory + enterprise features**
+
+---
+
+## 6️⃣ When would you ever use `BeanFactory`?
+
+Rare cases:
+
+* Very **memory-constrained environments**
+* Extremely **simple applications**
+* Custom framework development
+
+👉 For almost everything else: **use `ApplicationContext`**
+
+---
+
+## 7️⃣ Interview-ready answer (short)
+
+> `BeanFactory` is the basic IoC container in Spring that provides lazy-loaded bean creation and dependency injection. `ApplicationContext` extends `BeanFactory` and adds enterprise features such as event publishing, internationalization, annotation support, AOP integration, and eager bean initialization. In practice, `ApplicationContext` is preferred for most Spring applications.
+
+---
+
+
 4. **What are Spring Bean scopes?**  
    Common scopes:  
    - **Singleton**: One instance per IoC container (default).  
@@ -30,6 +126,220 @@ Here are some of the most commonly asked Spring (Core/Framework) and Spring Boot
    - Advice: Action taken (e.g., @Before, @After, @Around).  
    - Pointcut: Expression to match join points.  
    - Join Point: Point during execution (e.g., method call).
+
+Here’s a **clear, Spring-focused explanation** of **Aspect-Oriented Programming (AOP)**, with concepts, examples, and an interview-ready summary.
+
+---
+
+## What is Aspect-Oriented Programming (AOP)?
+
+**Aspect-Oriented Programming (AOP)** is a programming paradigm that helps you **separate cross-cutting concerns** from business logic.
+
+👉 Cross-cutting concerns are behaviors that apply to **many parts of an application**, such as:
+
+* Logging
+* Security
+* Transaction management
+* Performance monitoring
+* Exception handling
+
+Instead of duplicating this code everywhere, AOP lets you define it **once** and apply it **declaratively**.
+
+---
+
+## Why Spring AOP?
+
+Without AOP:
+
+```java
+public void transferMoney() {
+    log.info("start");
+    checkSecurity();
+    beginTransaction();
+
+    // business logic
+
+    commitTransaction();
+    log.info("end");
+}
+```
+
+❌ Code duplication
+❌ Hard to maintain
+❌ Business logic polluted
+
+---
+
+With Spring AOP:
+
+```java
+public void transferMoney() {
+    // clean business logic
+}
+```
+
+✔️ Logging, security, transactions handled **separately**
+
+---
+
+## Core AOP Concepts (Spring Terms)
+
+### 1️⃣ Aspect
+
+A module that contains cross-cutting logic.
+
+```java
+@Aspect
+@Component
+class LoggingAspect { }
+```
+
+---
+
+### 2️⃣ Join Point
+
+A **point during program execution**.
+
+In Spring AOP:
+
+* **Method execution only**
+
+---
+
+### 3️⃣ Advice
+
+**What** to do and **when** to do it.
+
+Types of advice:
+
+* `@Before`
+* `@After`
+* `@AfterReturning`
+* `@AfterThrowing`
+* `@Around`
+
+```java
+@Before("execution(* com.app.service.*.*(..))")
+public void logBefore() { }
+```
+
+---
+
+### 4️⃣ Pointcut
+
+Defines **where** the advice should run.
+
+```java
+@Pointcut("execution(* com.app.service.*.*(..))")
+public void serviceMethods() {}
+```
+
+---
+
+### 5️⃣ Target Object
+
+The original object being advised.
+
+---
+
+### 6️⃣ Proxy
+
+Spring creates a **proxy object** that wraps the target.
+
+* JDK Dynamic Proxy (interfaces)
+* CGLIB (classes)
+
+The proxy intercepts method calls and applies advice.
+
+---
+
+## Example: Logging Aspect
+
+```java
+@Aspect
+@Component
+public class LoggingAspect {
+
+    @Before("execution(* com.example.service.*.*(..))")
+    public void logMethodCall() {
+        System.out.println("Method called");
+    }
+}
+```
+
+Whenever a service method runs → logging happens automatically.
+
+---
+
+## Example: Transaction Management (Real-World Use)
+
+```java
+@Transactional
+public void createOrder() {
+    // business logic
+}
+```
+
+Behind the scenes:
+
+* Spring uses AOP
+* Starts transaction before method
+* Commits or rolls back after method
+
+---
+
+## How Spring AOP Works (Important!)
+
+* **Runtime weaving** using proxies
+* No bytecode modification
+* Only **Spring-managed beans**
+* Only **public method execution**
+
+---
+
+## Limitations of Spring AOP
+
+❌ Cannot intercept:
+
+* Private methods
+* Constructors
+* Static methods
+* Internal method calls (`this.method()`)
+
+---
+
+## When should you use AOP?
+
+### ✅ Use AOP for:
+
+* Logging
+* Security checks
+* Transactions
+* Metrics
+* Auditing
+
+### ❌ Avoid AOP for:
+
+* Core business logic
+* Overuse (harder debugging)
+
+---
+
+## AOP vs OOP
+
+| OOP                   | AOP                                 |
+| --------------------- | ----------------------------------- |
+| Encapsulates behavior | Encapsulates cross-cutting concerns |
+| Class-centric         | Concern-centric                     |
+
+---
+
+## Interview-ready answer (concise)
+
+> Aspect-Oriented Programming in Spring is a way to separate cross-cutting concerns like logging, security, and transaction management from business logic. Spring AOP works by creating runtime proxies around Spring-managed beans and applying advice at method execution join points using pointcuts.
+
+---
+
 
 #### Spring Boot Specific Questions
 
