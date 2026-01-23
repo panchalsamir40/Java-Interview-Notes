@@ -384,6 +384,40 @@ Without JMM:
 
 # 🧠 OBJECT-ORIENTED CONCEPTS (Asked via Java)
 
+The **four pillars of Object-Oriented Programming (OOP) in Java** are:
+
+1. **Encapsulation**
+
+   * Bundling data (variables) and methods that operate on the data into a single unit (class).
+   * Restricting direct access to some components using access modifiers (`private`, `protected`, `public`).
+   * Example: Making fields `private` and accessing them via getters and setters.
+
+2. **Abstraction**
+
+   * Hiding implementation details and showing only essential features.
+   * Achieved using **abstract classes** and **interfaces** in Java.
+   * Example: An interface defines *what* a class should do, not *how* it does it.
+
+3. **Inheritance**
+
+   * One class (child/subclass) acquires properties and behaviors of another class (parent/superclass).
+   * Achieved using the `extends` keyword.
+   * Promotes code reuse.
+   * Example: `class Dog extends Animal`.
+
+4. **Polymorphism**
+
+   * Ability of an object to take many forms.
+   * Two types in Java:
+
+     * **Compile-time (Method Overloading)**
+     * **Runtime (Method Overriding)**
+   * Example: A parent class reference pointing to a child class object.
+
+**In short:**
+👉 *Encapsulation, Abstraction, Inheritance, Polymorphism*
+
+
 ---
 
 ## Difference between **abstraction** and **encapsulation**
@@ -3723,8 +3757,8 @@ You **cannot maximize both simultaneously**.
 > Performance tuning is choosing *which metric matters more*.
 
 ---
-
-## ✅ Final Interview-Ready Summary
+ 
+## ✅ Final Interview-Ready Summary>
 
 * Java is fast due to **adaptive runtime optimization**
 * JIT compiles hot code into native instructions

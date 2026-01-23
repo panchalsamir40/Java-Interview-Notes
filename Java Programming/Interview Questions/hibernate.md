@@ -710,6 +710,77 @@ Common shared fields:
 > `@MappedSuperclass` is for mapping reuse, not domain modeling.
 
 ---
+### What is `@MappedSuperclass`? (Hibernate / JPA – Interview Friendly)
+
+`@MappedSuperclass` is a **JPA annotation** used to define a **base class whose fields are mapped to database columns**, but **the class itself is NOT an entity** and **does not have its own table**.
+
+Its purpose is **code reuse for common fields**.
+
+---
+
+## Simple Definition (Interview Answer)
+
+> **`@MappedSuperclass` allows common mapping information to be inherited by entity classes, without creating a separate table for the superclass.**
+
+---
+
+## Example
+
+### Base Class
+
+```java
+@MappedSuperclass
+public abstract class BaseEntity {
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+}
+```
+
+### Entity Class
+
+```java
+@Entity
+public class User extends BaseEntity {
+
+    private String username;
+    private String email;
+}
+```
+
+### Database Table Created
+
+```sql
+USER
+-------------------
+id
+created_at
+updated_at
+username
+email
+```
+
+➡ **No `BaseEntity` table is created**
+
+---
+
+## Key Characteristics
+
+| Feature                     | `@MappedSuperclass` |
+| --------------------------- | ------------------- |
+| Creates table               | ❌ No                |
+| Can have `@Id`              | ✅ Yes               |
+| Can be extended by entities | ✅ Yes               |
+| Can be queried directly     | ❌ No                |
+| Supports inheritance        | ✅ Yes               |
+| Used for                    | Common fields       |
+
+---
+
 
 ## ✅ Final High-Confidence Interview Summary
 
@@ -729,6 +800,318 @@ I’ll focus on **what the relationship actually represents**, **who controls th
 # 🔹 Association Mappings (High Focus Area 🔥)
 
 ---
+
+Below is a **clear, structured, interview-focused guide** to **Association Mappings in JPA / Hibernate**.
+This is a **🔥 high-focus interview area**, so I’ll explain **concepts + examples + common traps**.
+
+---
+
+# Association Mappings in JPA / Hibernate 🔥
+
+Association mappings define **relationships between entities**.
+
+---
+
+## 🔑 Types of Associations
+
+1. **@OneToOne**
+2. **@OneToMany**
+3. **@ManyToOne**
+4. **@ManyToMany**
+
+---
+
+# 1️⃣ @ManyToOne ⭐⭐⭐ (MOST IMPORTANT)
+
+### Concept
+
+* **Many entities → One entity**
+* Example: **Many Employees → One Department**
+
+### Example
+
+```java
+@Entity
+public class Employee {
+
+    @Id
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "dept_id")
+    private Department department;
+}
+```
+
+```java
+@Entity
+public class Department {
+
+    @Id
+    private Long id;
+
+    private String name;
+}
+```
+
+### Database
+
+```
+EMPLOYEE
+--------
+id
+dept_id  ← FK
+```
+
+### Key Points (Interview Gold)
+
+* **Default fetch = EAGER**
+* **Owning side = @ManyToOne**
+* Foreign key is **always on many side**
+
+---
+
+# 2️⃣ @OneToMany ⭐⭐⭐
+
+### Concept
+
+* **One entity → Many entities**
+* Example: **One Department → Many Employees**
+
+### Bidirectional Mapping (Recommended)
+
+```java
+@Entity
+public class Department {
+
+    @Id
+    private Long id;
+
+    @OneToMany(mappedBy = "department")
+    private List<Employee> employees;
+}
+```
+
+```java
+@Entity
+public class Employee {
+
+    @Id
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "dept_id")
+    private Department department;
+}
+```
+
+### Key Points
+
+* **mappedBy** → inverse side
+* No extra column created on `Department`
+* **Default fetch = LAZY**
+
+---
+
+### ❌ Unidirectional @OneToMany (Not Recommended)
+
+```java
+@OneToMany
+@JoinColumn(name = "dept_id")
+private List<Employee> employees;
+```
+
+❗ Creates unnecessary complexity & update statements.
+
+---
+
+# 3️⃣ @OneToOne ⭐⭐⭐
+
+### Concept
+
+* **One entity ↔ One entity**
+* Example: **User ↔ Profile**
+
+### Owning Side
+
+```java
+@Entity
+public class User {
+
+    @Id
+    private Long id;
+
+    @OneToOne
+    @JoinColumn(name = "profile_id")
+    private Profile profile;
+}
+```
+
+```java
+@Entity
+public class Profile {
+
+    @Id
+    private Long id;
+}
+```
+
+### Bidirectional
+
+```java
+@OneToOne(mappedBy = "profile")
+private User user;
+```
+
+### Key Points
+
+* **Default fetch = EAGER**
+* FK exists on owning side
+* Can also use shared primary key
+
+---
+
+# 4️⃣ @ManyToMany ⭐⭐⭐
+
+### Concept
+
+* **Many entities ↔ Many entities**
+* Example: **Students ↔ Courses**
+
+### Example
+
+```java
+@Entity
+public class Student {
+
+    @Id
+    private Long id;
+
+    @ManyToMany
+    @JoinTable(
+        name = "student_course",
+        joinColumns = @JoinColumn(name = "student_id"),
+        inverseJoinColumns = @JoinColumn(name = "course_id")
+    )
+    private Set<Course> courses;
+}
+```
+
+```java
+@Entity
+public class Course {
+
+    @Id
+    private Long id;
+
+    @ManyToMany(mappedBy = "courses")
+    private Set<Student> students;
+}
+```
+
+### Database
+
+```
+STUDENT
+COURSE
+STUDENT_COURSE  ← Join table
+```
+
+### Key Points
+
+* **Always uses join table**
+* **Default fetch = LAZY**
+* Avoid cascade REMOVE ❌
+
+---
+
+# 🔥 Owning vs Inverse Side (VERY IMPORTANT)
+
+| Concept      | Meaning                   |
+| ------------ | ------------------------- |
+| Owning side  | Has FK / JoinTable        |
+| Inverse side | Uses `mappedBy`           |
+| mappedBy     | Field name on owning side |
+
+❗ **Only owning side updates the DB**
+
+---
+
+# 🔥 Cascade Types (Interview Favorite)
+
+```java
+@OneToMany(cascade = CascadeType.ALL)
+```
+
+| Cascade | Meaning                  |
+| ------- | ------------------------ |
+| PERSIST | Save child automatically |
+| MERGE   | Update child             |
+| REMOVE  | Delete child             |
+| REFRESH | Refresh                  |
+| DETACH  | Detach                   |
+
+⚠ **Avoid `CascadeType.REMOVE` in ManyToMany**
+
+---
+
+# 🔥 Fetch Types (Critical)
+
+| Relationship | Default Fetch |
+| ------------ | ------------- |
+| @ManyToOne   | EAGER         |
+| @OneToOne    | EAGER         |
+| @OneToMany   | LAZY          |
+| @ManyToMany  | LAZY          |
+
+👉 Best Practice:
+
+```java
+@ManyToOne(fetch = FetchType.LAZY)
+```
+
+---
+
+# 🔥 Common Interview Traps
+
+### ❓ Where is the foreign key?
+
+* **@ManyToOne side**
+
+---
+
+### ❓ mappedBy value?
+
+* Field name on **owning side**
+
+---
+
+### ❓ Can @OneToMany exist without @ManyToOne?
+
+* Yes, but **not recommended**
+
+---
+
+### ❓ Why LAZY is preferred?
+
+* Prevents **N+1 problem**
+* Improves performance
+
+---
+
+# 🏆 Interview Cheat Sheet (MEMORIZE)
+
+```
+@ManyToOne → FK side → EAGER
+@OneToMany → inverse → LAZY
+@OneToOne → FK on owning side
+@ManyToMany → Join Table
+mappedBy → inverse side
+```
+
+---
+
+
 
 ## 1️⃣ Difference between `@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany`
 
