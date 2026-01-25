@@ -2173,6 +2173,146 @@ Example:
 
 > PathVariable identifies the resource, RequestParam refines the request.
 
+In **Spring MVC / Spring Boot**, both `@RequestParam` and `@PathVariable` are used to extract values from an HTTP request, but they come from **different parts of the URL** and are used for **different purposes**.
+
+---
+
+## 1. `@RequestParam`
+
+### What it does
+
+* Extracts values from **query parameters** (the part after `?` in the URL).
+* Often used for **filtering, searching, pagination, or optional values**.
+
+### Example URL
+
+```
+GET /users?role=admin&active=true
+```
+
+### Controller Example
+
+```java
+@GetMapping("/users")
+public List<User> getUsers(
+        @RequestParam String role,
+        @RequestParam boolean active) {
+    ...
+}
+```
+
+### Key Points
+
+* Comes from **query string**
+* Can be **optional**
+* Can have **default values**
+* Order does **not matter**
+
+```java
+@RequestParam(required = false)
+@RequestParam(defaultValue = "10")
+```
+
+---
+
+## 2. `@PathVariable`
+
+### What it does
+
+* Extracts values from the **URL path itself**.
+* Used to identify a **specific resource**.
+
+### Example URL
+
+```
+GET /users/42
+```
+
+### Controller Example
+
+```java
+@GetMapping("/users/{id}")
+public User getUserById(@PathVariable Long id) {
+    ...
+}
+```
+
+### Key Points
+
+* Comes from the **URI path**
+* Usually **required**
+* Represents a **resource identifier**
+* URL structure is meaningful
+
+---
+
+## 3. Side-by-Side Comparison
+
+| Feature             | `@RequestParam`                 | `@PathVariable`             |
+| ------------------- | ------------------------------- | --------------------------- |
+| Source              | Query parameters (`?key=value`) | URL path (`/resource/{id}`) |
+| Typical use         | Filtering, sorting, pagination  | Resource identification     |
+| Required by default | Yes (can be optional)           | Yes                         |
+| Default values      | Supported                       | Not supported               |
+| URL meaning         | Less semantic                   | More RESTful                |
+| Example             | `/users?age=20`                 | `/users/20`                 |
+
+---
+
+## 4. When to Use Which?
+
+### Use `@PathVariable` when:
+
+* You are identifying a **specific resource**
+* Building **RESTful APIs**
+* The value is **mandatory**
+
+```
+GET /orders/123
+```
+
+### Use `@RequestParam` when:
+
+* You are **filtering or modifying** the result
+* The parameter is **optional**
+* You need **multiple optional values**
+
+```
+GET /orders?status=shipped&sort=date
+```
+
+---
+
+## 5. Can They Be Used Together? ✅
+
+Yes!
+
+```java
+@GetMapping("/users/{id}")
+public User getUser(
+        @PathVariable Long id,
+        @RequestParam(required = false) String fields) {
+    ...
+}
+```
+
+Example URL:
+
+```
+/users/5?fields=name,email
+```
+
+---
+
+### Summary
+
+* **`@PathVariable` → identifies *what* resource**
+* **`@RequestParam` → modifies *how* data is retrieved**
+
+If you want, I can also explain this with **real REST API design examples** or **interview-style answers**.
+
+
+
 ---
 
 ## Difference between `@RequestBody` and `@ResponseBody`
