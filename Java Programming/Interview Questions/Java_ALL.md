@@ -1146,6 +1146,192 @@ Used when:
 * `shutdown()` → graceful
 * `shutdownNow()` → interrupt-based
 
+
+In Java, you stop a thread safely by **asking it to stop**, not by killing it.
+
+Do **not** use:
+
+```java
+thread.stop(); // unsafe, deprecated
+```
+
+Instead use a **flag** or **interrupt**.
+
+---
+
+# 1. Best general way: use `interrupt()`
+
+A thread should regularly check whether it has been interrupted.
+
+```java
+class Worker extends Thread {
+    public void run() {
+        while (!Thread.currentThread().isInterrupted()) {
+            System.out.println("Working...");
+        }
+
+        System.out.println("Stopped safely.");
+    }
+}
+```
+
+Usage:
+
+```java
+Worker worker = new Worker();
+worker.start();
+
+worker.interrupt(); // asks the thread to stop
+```
+
+Meaning:
+
+> `interrupt()` does not instantly kill the thread.
+> It sends a polite stop request.
+
+---
+
+# 2. If the thread is sleeping or waiting
+
+This is where `interrupt()` is extra useful.
+
+```java
+class Worker extends Thread {
+    public void run() {
+        try {
+            while (!Thread.currentThread().isInterrupted()) {
+                System.out.println("Working...");
+                Thread.sleep(1000);
+            }
+        } catch (InterruptedException e) {
+            System.out.println("Interrupted while sleeping.");
+        }
+
+        System.out.println("Cleaning up and stopping.");
+    }
+}
+```
+
+Usage:
+
+```java
+Worker worker = new Worker();
+worker.start();
+
+worker.interrupt();
+```
+
+When a thread is sleeping, `interrupt()` wakes it up by causing an `InterruptedException`.
+
+---
+
+# 3. Using a boolean flag
+
+You can also use a shared flag.
+
+```java
+class Worker extends Thread {
+    private volatile boolean running = true;
+
+    public void stopRunning() {
+        running = false;
+    }
+
+    public void run() {
+        while (running) {
+            System.out.println("Working...");
+        }
+
+        System.out.println("Stopped safely.");
+    }
+}
+```
+
+Usage:
+
+```java
+Worker worker = new Worker();
+worker.start();
+
+worker.stopRunning();
+```
+
+Important part:
+
+```java
+private volatile boolean running = true;
+```
+
+`volatile` makes sure the thread actually sees the updated value from another thread.
+
+---
+
+# Interrupt vs flag
+
+| Method                  | Best for                                                    |
+| ----------------------- | ----------------------------------------------------------- |
+| `interrupt()`           | Threads that sleep, wait, block, or use blocking operations |
+| `volatile boolean` flag | Simple loops doing regular work                             |
+| Both together           | Very common and safest                                      |
+
+---
+
+# Best version: flag + interrupt
+
+```java
+class Worker extends Thread {
+    private volatile boolean running = true;
+
+    public void shutdown() {
+        running = false;
+        interrupt();
+    }
+
+    public void run() {
+        while (running) {
+            try {
+                System.out.println("Working...");
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                running = false;
+            }
+        }
+
+        System.out.println("Stopped safely.");
+    }
+}
+```
+
+Usage:
+
+```java
+Worker worker = new Worker();
+worker.start();
+
+worker.shutdown();
+```
+
+This works well because:
+
+```java
+running = false;
+```
+
+tells the loop to stop.
+
+```java
+interrupt();
+```
+
+wakes the thread up if it is sleeping.
+
+---
+
+Best exam sentence:
+
+> A thread should be stopped safely by using a shared `volatile` flag or by calling `interrupt()`, then allowing the thread to exit its `run()` method after cleanup. Avoid `Thread.stop()` because it can leave shared data in an inconsistent state.
+
+
 ---
 
 ### **Senior rule**
