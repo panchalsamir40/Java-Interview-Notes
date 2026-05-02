@@ -481,6 +481,17 @@ The **four pillars of Object-Oriented Programming (OOP) in Java** are:
 
 ## Difference between **interface and abstract class** ⭐
 
+| Feature              | Interface                                                               | Abstract Class                        |
+| -------------------- | ----------------------------------------------------------------------- | ------------------------------------- |
+| Main idea            | A **contract/ability**                                                  | An **unfinished parent**              |
+| Think                | “Can do”                                                                | “Is a”                                |
+| Keyword              | `implements`                                                            | `extends`                             |
+| Multiple inheritance | A class can implement **many** interfaces                               | A class can extend **only one** class |
+| Methods              | Usually method signatures; can also have `default` and `static` methods | Can have abstract and normal methods  |
+| Variables            | `public static final` constants by default                              | Can have normal instance variables    |
+| Constructor          | No constructor                                                          | Can have a constructor                |
+| Best use             | Shared behavior across unrelated classes                                | Shared base code for related classes  |
+
 ### **Interface**
 
 **Concept**
