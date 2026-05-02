@@ -492,6 +492,31 @@ The **four pillars of Object-Oriented Programming (OOP) in Java** are:
 | Constructor          | No constructor                                                          | Can have a constructor                |
 | Best use             | Shared behavior across unrelated classes                                | Shared base code for related classes  |
 
+| Interface can have                         | Interface cannot have               |
+| ------------------------------------------ | ----------------------------------- |
+| `public abstract` methods                  | Constructors                        |
+| `default` methods with a body              | Instance variables                  |
+| `static` methods with a body               | Normal object state                 |
+| `private` helper methods                   | Non-public abstract methods         |
+| Constants: `public static final` variables | Regular non-final fields            |
+| Nested classes/interfaces                  | Be directly instantiated with `new` |
+
+| Abstract class can have          | Abstract class cannot have          |
+| -------------------------------- | ----------------------------------- |
+| Abstract methods                 | Be directly instantiated with `new` |
+| Normal methods with bodies       | Force multiple class inheritance    |
+| Instance variables               |                                     |
+| Static variables                 |                                     |
+| Final variables/constants        |                                     |
+| Constructors                     |                                     |
+| Public/protected/private methods |                                     |
+| State/data                       |                                     |
+| Getters/setters                  |                                     |
+| Static methods                   |                                     |
+| Final methods                    |                                     |
+| Private methods                  |                                     |
+
+
 ### **Interface**
 
 **Concept**
