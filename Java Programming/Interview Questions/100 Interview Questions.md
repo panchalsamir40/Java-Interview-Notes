@@ -169,14 +169,18 @@ Here are detailed, experienced-level answers to the requested questions on Java 
    Ideal: Event listeners, observer lists.
 
 21. **Difference between ArrayList, LinkedList, and Vector.**  
-   | Feature               | ArrayList                  | LinkedList                         | Vector                          |
-   |-----------------------|----------------------------|------------------------------------|---------------------------------|
-   | Internal structure    | Dynamic array              | Doubly-linked list                 | Dynamic array (like ArrayList) |
-   | Random access         | O(1)                       | O(n)                               | O(1)                            |
-   | Insertion/deletion    | Slow in middle (O(n))      | Fast (O(1) if node known)          | Slow in middle                  |
-   | Thread safety         | Not thread-safe            | Not thread-safe                    | Synchronized methods            |
-   | Performance           | Best for reads             | Best for frequent add/remove       | Slower due to sync overhead     |
-   | Legacy                | Preferred modern choice    | Use as Deque                       | Legacy (avoid, use Collections.synchronizedList) |
+| Feature                    | `ArrayList`                               | `LinkedList`                                                | `Vector`                                                    |
+| -------------------------- | ----------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
+| Internal structure         | Dynamic array                             | Doubly linked list                                          | Dynamic array                                               |
+| Random access              | Fast: `O(1)`                              | Slow: `O(n)`                                                | Fast: `O(1)`                                                |
+| Add at end                 | Usually `O(1)` amortized                  | `O(1)`                                                      | Usually `O(1)` amortized                                    |
+| Insert/delete in middle    | `O(n)` because elements may need shifting | `O(n)` to find the node, then `O(1)` to insert/delete       | `O(n)` because elements may need shifting                   |
+| Insert/delete at beginning | `O(n)` because shifting is required       | `O(1)`                                                      | `O(n)` because shifting is required                         |
+| Thread safety              | Not thread-safe                           | Not thread-safe                                             | Synchronized methods                                        |
+| Performance                | Best for read-heavy use cases             | Better when frequent insert/delete happens at beginning/end | Slower than `ArrayList` because of synchronization overhead |
+| Memory usage               | Lower memory overhead                     | Higher memory overhead due to node pointers                 | Similar to `ArrayList`, with synchronization overhead       |
+| Legacy status              | Modern preferred list implementation      | Modern, but usually used as `Deque`/queue                   | Legacy class; generally avoided                             |
+
 
 22. **How does TreeMap maintain ordering? Comparator vs Comparable.**  
    TreeMap uses a **red-black tree** (self-balancing BST) to store entries sorted by keys.  
