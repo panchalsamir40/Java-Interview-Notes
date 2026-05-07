@@ -122,14 +122,17 @@ Here are detailed, experienced-level answers to the requested questions on Java 
    On shrinkage or removal, it may **degenerate** back to a linked list if nodes fall below **UNTREEIFY_THRESHOLD (6)**.  
    This balances worst-case performance during hash collisions (e.g., poor hashCode).
 
-17. **Difference between ConcurrentHashMap and Hashtable? Segment locking in older versions.**  
-   | Feature                  | Hashtable                                      | ConcurrentHashMap (Java 8+)                  |
-   |--------------------------|------------------------------------------------|----------------------------------------------|
-   | Synchronization          | All methods synchronized (coarse-grained lock) | Fine-grained locking (per bucket + CAS)      |
-   | Nulls                    | No null keys/values                            | Allows null values (not keys) in some ops    |
-   | Performance              | Poor under high concurrency (single lock)      | High scalability (multiple threads)          |
-   | Iterator                 | Fail-fast                                      | Fail-safe (weakly consistent)                |
-   | Legacy                   | Old (Java 1.0)                                 | Modern (Java 5+, improved in 7/8)            |
+17. 
+| Feature           | `Hashtable`                                                                 | `ConcurrentHashMap` Java 8+                                    |
+| ----------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Synchronization   | Entire method is synchronized                                               | Uses finer-grained locking and CAS                             |
+| Locking behavior  | One thread locks the whole map for most operations                          | Multiple threads can read/write different buckets concurrently |
+| Null keys/values  | Does **not** allow null keys or null values                                 | Does **not** allow null keys or null values                    |
+| Performance       | Poor under high concurrency because of single map-level lock                | Much better scalability under concurrent access                |
+| Iterator          | Fail-fast behavior is possible through legacy enumeration/iterator behavior | Weakly consistent iterator                                     |
+| Legacy status     | Legacy class from Java 1.0                                                  | Modern concurrent map from Java 5                              |
+| Recommended usage | Generally avoided in modern code                                            | Preferred for concurrent map access                            |
+
 
    Older ConcurrentHashMap (Java 7) used **segment locking** (16 segments by default, each with its own lock) for better concurrency. Java 8+ replaced it with finer-grained locking on individual buckets using CAS (compare-and-swap) and synchronized only when needed, plus treeification support.
 
