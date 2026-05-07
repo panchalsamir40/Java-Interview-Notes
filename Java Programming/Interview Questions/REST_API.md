@@ -306,15 +306,47 @@ Because:
 
 # 3️⃣ HTTP STATUS CODES (Interview Favorite)
 
----
+| Range | Meaning           |
+| ----- | ----------------- |
+| `1xx` | Informational     |
+| `2xx` | Success           |
+| `3xx` | Redirection       |
+| `4xx` | Client-side error |
+| `5xx` | Server-side error |
 
-## 200 vs 201 vs 204 ⭐
+| Code             | Meaning                               | When to use                                 |
+| ---------------- | ------------------------------------- | ------------------------------------------- |
+| `200 OK`         | Request succeeded                     | Successful `GET`, `PUT`, or normal response |
+| `201 Created`    | New resource created                  | Successful `POST` that creates something    |
+| `202 Accepted`   | Request accepted but processing later | Async processing, queue-based request       |
+| `204 No Content` | Success but no response body          | Successful `DELETE` or update with no body  |
 
-| Code | Meaning    | Use              |
-| ---- | ---------- | ---------------- |
-| 200  | OK         | Generic success  |
-| 201  | Created    | Resource created |
-| 204  | No Content | Success, no body |
+| Code                    | Meaning                       | When to use                     |
+| ----------------------- | ----------------------------- | ------------------------------- |
+| `301 Moved Permanently` | Resource permanently moved    | Old URL permanently replaced    |
+| `302 Found`             | Temporary redirect            | Temporary redirect              |
+| `304 Not Modified`      | Cached version is still valid | Browser/client cache validation |
+
+| Code                         | Meaning                                  | When to use                                            |
+| ---------------------------- | ---------------------------------------- | ------------------------------------------------------ |
+| `400 Bad Request`            | Invalid request                          | Malformed JSON, missing required fields, invalid input |
+| `401 Unauthorized`           | Not authenticated                        | User did not log in or token is missing/invalid        |
+| `403 Forbidden`              | Authenticated but not allowed            | User logged in but lacks permission                    |
+| `404 Not Found`              | Resource does not exist                  | Order, user, trade, or endpoint not found              |
+| `405 Method Not Allowed`     | HTTP method not supported                | `POST` used on endpoint that only supports `GET`       |
+| `408 Request Timeout`        | Client took too long                     | Request timeout from client side                       |
+| `409 Conflict`               | Conflict with current state              | Duplicate resource, optimistic locking failure         |
+| `415 Unsupported Media Type` | Unsupported content type                 | Client sends XML but API expects JSON                  |
+| `422 Unprocessable Entity`   | Valid syntax, failed business validation | Quantity negative, invalid trade state                 |
+| `429 Too Many Requests`      | Rate limit exceeded                      | Too many requests from same client                     |
+
+| Code                        | Meaning                            | When to use                                 |
+| --------------------------- | ---------------------------------- | ------------------------------------------- |
+| `500 Internal Server Error` | Generic server failure             | Unexpected exception                        |
+| `502 Bad Gateway`           | Bad response from upstream service | Gateway/proxy got invalid response          |
+| `503 Service Unavailable`   | Service temporarily unavailable    | Overloaded, maintenance, dependency down    |
+| `504 Gateway Timeout`       | Upstream timeout                   | Gateway waited too long for another service |
+
 
 💡 **Senior rule**
 
