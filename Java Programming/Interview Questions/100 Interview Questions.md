@@ -169,6 +169,7 @@ Here are detailed, experienced-level answers to the requested questions on Java 
    Ideal: Event listeners, observer lists.
 
 21. **Difference between ArrayList, LinkedList, and Vector.**  
+
 | Feature                    | `ArrayList`                               | `LinkedList`                                                | `Vector`                                                    |
 | -------------------------- | ----------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
 | Internal structure         | Dynamic array                             | Doubly linked list                                          | Dynamic array                                               |
